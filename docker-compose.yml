@@ -1,0 +1,19 @@
+services:
+  maestro:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      # host:container — change the left side to whatever public port you want.
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=8080
+      # Optional: set a server-side xAI key so the console works without
+      # everyone pasting their own key in the Keys panel.
+      # - XAI_API_KEY=your-xai-key-here
+    # Optional volume if a future DB/data dir is added.
+    # volumes:
+    #   - maestro-data:/data

@@ -1,0 +1,12 @@
+node_modules
+.output
+.vercel
+dist
+.tanstack
+screenshots
+.git
+*.log
+.grok/preview.*
+.grok/app-env.json
+.env
+.env.*
