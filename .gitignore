@@ -12,11 +12,8 @@ dist/
 # ---- Generated / platform runtime ----
 src/routeTree.gen.ts
 
-# ---- Grok platform internals (keep out of the repo) ----
-.grok/app-env.json
-.grok/preview.*
-.grok/status
-.grok/*.log
+# ---- Grok build tooling (agent scaffolding, not app source) ----
+.grok/
 
 # ---- Local / env / secrets ----
 .env
