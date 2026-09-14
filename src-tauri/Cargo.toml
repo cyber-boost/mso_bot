@@ -1,0 +1,23 @@
+[package]
+name = "maestro"
+version = "0.1.0"
+description = "Maestro — a conductor's podium for AI models"
+edition = "2021"
+
+# Set the "tauri" custom-target. When enabled, Tauri will build a custom
+# windowing binary (Wry) so we can control the window and spawn the sidecar.
+[lib]
+name = "maestro_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", features = ["json", "blocking"], default-features = false }
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]

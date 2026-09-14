@@ -1,0 +1,52 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Maestro",
+  "version": "0.1.0",
+  "identifier": "ps.maestro.app",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "node scripts/verify-output.mjs",
+    "devUrl": "http://127.0.0.1:5180",
+    "frontendDist": "../.desktop-shell"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Maestro",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "userAgent": "MaestroDesktop/0.1"
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "DeveloperTool",
+    "shortDescription": "A conductor's podium for AI models",
+    "longDescription": "Maestro is a local harness for conducting AI models over the OpenAI Chat Completions and Anthropic Messages protocols.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "externalBin": [
+      "binaries/maestro-backend"
+    ],
+    "resources": {
+      "../.output/": "output/"
+    },
+    "copyright": "Cyber Boost"
+  }
+}

@@ -4,10 +4,20 @@ node_modules/
 
 # ---- Build output ----
 .output/
+.output-desktop/
 dist/
 .vercel/
 .tanstack/
 *.tsbuildinfo
+
+# ---- Tauri (desktop) ----
+src-tauri/target/
+src-tauri/gen/schemas/
+# Sidecar Node runtimes are downloaded at build time (scripts/fetch-sidecar.mjs);
+# build targets are produced by CI / the fetch script, never committed.
+src-tauri/binaries/*.exe
+src-tauri/binaries/maestro-backend-*
+!.desktop-shell/index.html
 
 # ---- Generated / platform runtime ----
 src/routeTree.gen.ts
