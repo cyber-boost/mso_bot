@@ -57,7 +57,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+
+      # Install with `npm install`, not `npm ci`: the committed lockfile can
+      # drift out of sync with the resolution that newer npm produces (e.g.
+      # lru-cache), which makes strict `npm ci` fail. `npm install` reconciles.
 
       # rustup already on GH runners; add the target triple(s) + musl zig tools.
       - name: Install Rust toolchain
@@ -82,7 +85,7 @@ jobs:
           sudo apt-get install -y zig || (sudo snap install zig --classic || true)
 
       - name: Install frontend deps
-        run: npm ci
+        run: npm install
 
       - name: Build frontend (.output)
         run: |
