@@ -33,8 +33,8 @@ jobs:
           - os: macos-latest
             target: universal-apple-darwin
             artifacts: |
-              src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
               src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz
+              src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
             name: maestro-macos-universal
           # Linux x64 (glibc)
           - os: ubuntu-22.04
@@ -88,9 +88,10 @@ jobs:
         run: npm install
 
       - name: Build frontend (.output)
-        run: |
-          npm run build
-          node scripts/fix-ssr-css-refs.mjs .output
+        # Uses the cross-platform script: it drives Vite's JS build API directly
+        # (the `npm run build` wrapper's `spawn("vite")` cannot resolve the .cmd
+        # shim on a native Windows runner), then reconciles SSR CSS refs.
+        run: node scripts/build-frontend.mjs
 
       - name: Fetch backend sidecar (Node runtime)
         run: |

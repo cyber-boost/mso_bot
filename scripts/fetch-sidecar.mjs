@@ -29,21 +29,21 @@ const require = createRequire(import.meta.url);
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_DIR = join(ROOT, "src-tauri", "binaries");
-const NODE_VERSION = process.env.NODE_VERSION || "22.14.0";
+const NODE_VERSION = process.env.NODE_VERSION || "24.21.0";
 const DIST = process.env.NODE_DIST_URL || "https://nodejs.org/dist";
 
 function resolveTarget(target) {
-  const t = (v, pkg, kind) => ({ ver: v, pkg, kind });
+  const t = (pkg, kind) => ({ pkg, kind });
   switch (target) {
-    case "x86_64-pc-windows-msvc": return t("win-x64", `node-v${NODE_VERSION}-win-x64.zip`, "zip");
-    case "aarch64-pc-windows-msvc": return t("win-arm64", `node-v${NODE_VERSION}-win-arm64.zip`, "zip");
-    case "x86_64-apple-darwin": return t("darwin-x64", `node-v${NODE_VERSION}-darwin-x64.tar.gz`, "tar");
-    case "aarch64-apple-darwin": return t("darwin-arm64", `node-v${NODE_VERSION}-darwin-arm64.tar.gz`, "tar");
-    case "x86_64-unknown-linux-gnu": return t("linux-x64", `node-v${NODE_VERSION}-linux-x64.tar.gz`, "tar");
-    case "aarch64-unknown-linux-gnu": return t("linux-arm64", `node-v${NODE_VERSION}-linux-arm64.tar.gz`, "tar");
-    case "x86_64-unknown-linux-musl": return t("linuxmusl-x64", `node-v${NODE_VERSION}-linuxmusl-x64.tar.gz`, "tar");
-    case "aarch64-unknown-linux-musl": return t("linuxmusl-arm64", `node-v${NODE_VERSION}-linuxmusl-arm64.tar.gz`, "tar");
-    case "armv7-unknown-linux-musleabihf": return t("linuxmusl-armv7l", `node-v${NODE_VERSION}-linuxmusl-armv7l.tar.gz`, "tar");
+    case "x86_64-pc-windows-msvc": return t(`node-v${NODE_VERSION}-win-x64.zip`, "zip");
+    case "aarch64-pc-windows-msvc": return t(`node-v${NODE_VERSION}-win-arm64.zip`, "zip");
+    case "x86_64-apple-darwin": return t(`node-v${NODE_VERSION}-darwin-x64.tar.gz`, "tar");
+    case "aarch64-apple-darwin": return t(`node-v${NODE_VERSION}-darwin-arm64.tar.gz`, "tar");
+    case "x86_64-unknown-linux-gnu": return t(`node-v${NODE_VERSION}-linux-x64.tar.gz`, "tar");
+    case "aarch64-unknown-linux-gnu": return t(`node-v${NODE_VERSION}-linux-arm64.tar.gz`, "tar");
+    // NB: musl tarballs use `linux-x64-musl` (NOT `linuxmusl-x64`) and are only
+    // published for Node >= 24. x86_64 musl is all Tauri's musl target needs.
+    case "x86_64-unknown-linux-musl": return t(`node-v${NODE_VERSION}-linux-x64-musl.tar.gz`, "tar");
     default: return null;
   }
 }
