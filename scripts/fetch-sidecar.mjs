@@ -10,7 +10,7 @@
  *
  * The target triple is taken from `--target <triple>`, or inferred from the
  * host OS/arch when absent. Node version/dist overridable via env:
- *   NODE_VERSION  (default 22.14.0)
+ *   NODE_VERSION  (default 24.21.0)
  *   NODE_DIST_URL (default https://nodejs.org/dist)
  *
  * Usage:
@@ -42,7 +42,8 @@ function resolveTarget(target) {
     case "x86_64-unknown-linux-gnu": return t(`node-v${NODE_VERSION}-linux-x64.tar.gz`, "tar");
     case "aarch64-unknown-linux-gnu": return t(`node-v${NODE_VERSION}-linux-arm64.tar.gz`, "tar");
     // NB: musl tarballs use `linux-x64-musl` (NOT `linuxmusl-x64`) and are only
-    // published for Node >= 24. x86_64 musl is all Tauri's musl target needs.
+    // published for Node >= 24. (The Tauri musl target is dropped — see
+    // desktop.yml — because webkit2gtk/GTK are glibc-only.)
     case "x86_64-unknown-linux-musl": return t(`node-v${NODE_VERSION}-linux-x64-musl.tar.gz`, "tar");
     default: return null;
   }
@@ -81,6 +82,30 @@ function walk(dir) {
   );
 }
 
+// Extract cross-platform:
+//  - Windows: PowerShell `Expand-Archive` for zips (Windows' `tar.exe` is a
+//    bsdtar that misreads drive-letter paths like `D:\...` as a remote host).
+//    `tar -xzf` is fine for tar.gz on Windows.
+//  - macOS: bsdtar `-xf` handles BOTH zip and tar.gz.
+//  - Linux (Ubuntu runners): `unzip` for zips, GNU `tar` for tar.gz.
+function extractArchive(kind, archivePath, tmpDirPath) {
+  const isWin = process.platform === "win32";
+  const isLinux = process.platform === "linux";
+  if (isWin && kind === "zip") {
+    const sh = ["-NoProfile", "-Command",
+      `Expand-Archive -Path "${archivePath}" -DestinationPath "${tmpDirPath}" -Force`];
+    execFileSync("powershell", sh, { stdio: "inherit", windowsVerbatimArguments: false });
+    return;
+  }
+  const isWinTar = isWin && kind !== "zip";
+  execFileSync(
+    isWinTar ? "tar.exe" : isLinux && kind === "zip" ? "unzip" : "tar",
+    kind === "zip" ? ["-o", archivePath, "-d", tmpDirPath]
+      : ["-xzf", archivePath, "-C", tmpDirPath],
+    { stdio: "inherit" },
+  );
+}
+
 const argIdx = process.argv.indexOf("--target");
 const target = argIdx !== -1 ? process.argv[argIdx + 1] : hostTarget();
 const spec = resolveTarget(target);
@@ -108,26 +133,7 @@ try { rmSync(tmp, { force: true }); rmSync(archive, { force: true }); rmSync(tmp
 
 await download(`${DIST}/v${NODE_VERSION}/${spec.pkg}`, archive);
 mkdirSync(tmpDir, { recursive: true });
-
-// Extract cross-platform:
-//  - Windows & macOS ship `tar` = bsdtar, which extracts BOTH zip and tar.gz.
-//  - Linux (Ubuntu runners) has `unzip` for zips, GNU `tar` for tar.gz.
-function extractArchive(kind, archivePath, tmpDirPath) {
-  const isLinux = process.platform === "linux";
-  const args =
-    kind === "zip" && !isLinux
-      ? ["-xf", archivePath, "-C", tmpDirPath] // bsdtar handles zip on win/mac
-      : kind === "zip"
-        ? ["-o", archivePath, "-d", tmpDirPath] // unzip on linux
-        : ["-xzf", archivePath, "-C", tmpDirPath]; // tar.gz everywhere
-  execFileSync(process.platform === "win32" ? "tar.exe" : isLinux && kind === "zip" ? "unzip" : "tar", args, { stdio: "inherit" });
-}
-
-if (spec.kind === "zip") {
-  extractArchive("zip", archive, tmpDir);
-} else {
-  extractArchive("tar", archive, tmpDir);
-}
+extractArchive(spec.kind, archive, tmpDir);
 
 const nodeFile = isWin ? "node.exe" : "node";
 const found = walk(tmpDir).find((p) => p.endsWith(`/${nodeFile}`) || p.endsWith(`\\${nodeFile}`));
