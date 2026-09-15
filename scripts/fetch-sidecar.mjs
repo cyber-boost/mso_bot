@@ -109,10 +109,24 @@ try { rmSync(tmp, { force: true }); rmSync(archive, { force: true }); rmSync(tmp
 await download(`${DIST}/v${NODE_VERSION}/${spec.pkg}`, archive);
 mkdirSync(tmpDir, { recursive: true });
 
+// Extract cross-platform:
+//  - Windows & macOS ship `tar` = bsdtar, which extracts BOTH zip and tar.gz.
+//  - Linux (Ubuntu runners) has `unzip` for zips, GNU `tar` for tar.gz.
+function extractArchive(kind, archivePath, tmpDirPath) {
+  const isLinux = process.platform === "linux";
+  const args =
+    kind === "zip" && !isLinux
+      ? ["-xf", archivePath, "-C", tmpDirPath] // bsdtar handles zip on win/mac
+      : kind === "zip"
+        ? ["-o", archivePath, "-d", tmpDirPath] // unzip on linux
+        : ["-xzf", archivePath, "-C", tmpDirPath]; // tar.gz everywhere
+  execFileSync(process.platform === "win32" ? "tar.exe" : isLinux && kind === "zip" ? "unzip" : "tar", args, { stdio: "inherit" });
+}
+
 if (spec.kind === "zip") {
-  execFileSync("unzip", ["-o", archive, "-d", tmpDir], { stdio: "inherit" });
+  extractArchive("zip", archive, tmpDir);
 } else {
-  execFileSync(process.platform === "win32" ? "tar.exe" : "tar", ["-xzf", archive, "-C", tmpDir], { stdio: "inherit" });
+  extractArchive("tar", archive, tmpDir);
 }
 
 const nodeFile = isWin ? "node.exe" : "node";

@@ -33,8 +33,8 @@ jobs:
           - os: macos-latest
             target: universal-apple-darwin
             artifacts: |
-              src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz
-              src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
+              src-tauri/target/release/bundle/macos/*.app.tar.gz
+              src-tauri/target/release/bundle/dmg/*.dmg
             name: maestro-macos-universal
           # Linux x64 (glibc)
           - os: ubuntu-22.04
@@ -43,12 +43,9 @@ jobs:
               src-tauri/target/release/bundle/deb/*.deb
               src-tauri/target/release/bundle/appimage/*.AppImage
             name: maestro-linux-x64
-          # Linux x64 (musl, static) — requires zig as linker
-          - os: ubuntu-22.04
-            target: x86_64-unknown-linux-musl
-            artifacts: |
-              src-tauri/target/x86_64-unknown-linux-musl/release/maestro
-            name: maestro-linux-musl-x64
+          # (No musl target: Tauri webview apps link webkit2gtk/GTK, which is
+          #  glibc-only — a static musl binary cannot link it. Linux glibc covers
+          #  all mainstream desktop distros, incl. Alpine via glibc compat.)
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -62,27 +59,19 @@ jobs:
       # drift out of sync with the resolution that newer npm produces (e.g.
       # lru-cache), which makes strict `npm ci` fail. `npm install` reconciles.
 
-      # rustup already on GH runners; add the target triple(s) + musl zig tools.
+      # rustup already on GH runners; add the target triple(s) (musl dropped —
+      # Tauri webview links webkit2gtk/GTK which is glibc-only; a static musl
+      # binary can't link it, so Linux glibc is the desktop target).
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target == 'universal-apple-darwin' && 'x86_64-apple-darwin aarch64-apple-darwin' || matrix.target }}
 
-      - name: Install Linux (glibc) webkit deps
-        if: ${{ matrix.target == 'x86_64-unknown-linux-gnu' }}
+      - name: Install Linux deps
+        if: ${{ startsWith(matrix.os, 'ubuntu') }}
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libgtk-3-dev
-
-      - name: Install Linux (musl) deps + zig
-        if: ${{ matrix.target == 'x86_64-unknown-linux-musl' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y musl-tools libssl-dev gcc-multilib
-          # Zig provides cc for musl cross-linking in Tauri.
-          pip3 --version >/dev/null 2>&1 || sudo apt-get install -y python3-pip
-          # Use the rustup-bundled approach via cargo-zigbuild is unreliable; use zig directly.
-          sudo apt-get install -y zig || (sudo snap install zig --classic || true)
 
       - name: Install frontend deps
         run: npm install
