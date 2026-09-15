@@ -125,7 +125,9 @@ if (process.env.SIDECAR_FORCE !== "1" && existsSync(outPath)) {
 }
 
 const tmp = `${outPath}.tmp`;
-const archive = `${outPath}.archive`;
+// Give the downloaded archive its real extension: PowerShell Expand-Archive
+// rejects any non-.zip filename, and GNU tar/bsdtar infer format from it too.
+const archive = `${outPath}.${spec.kind === "zip" ? "zip" : "tar.gz"}`;
 const tmpDir = `${outPath}.dir`;
 
 console.log(`[fetch-sidecar] ${target} <- ${DIST}/v${NODE_VERSION}/${spec.pkg}`);
