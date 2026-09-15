@@ -181,3 +181,87 @@
     );
   background-size: 32px 32px;
 }
+
+/* ------------------------------------------------------------------ *
+ * Shell ("Term/Shell") — robot bots, live terminals, circuit decor
+ * ------------------------------------------------------------------ */
+:root {
+  --theme-chip-1: rgba(15, 26, 46, 0.9);
+  --theme-chip-2: rgba(13, 18, 32, 0.95);
+  --theme-chip-border: rgba(0, 212, 255, 0.35);
+  --theme-die-1: rgba(0, 212, 255, 0.9);
+  --theme-die-2: rgba(58, 138, 208, 0.6);
+}
+
+@keyframes shell-trace {
+  to {
+    stroke-dashoffset: -600;
+  }
+}
+@keyframes shell-node {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes shell-cpu-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+}
+@keyframes shell-panic-hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-14px);
+  }
+  55% {
+    transform: translateY(0);
+  }
+  70% {
+    transform: translateY(-8px);
+  }
+}
+.animate-trace {
+  animation: shell-trace 9s linear infinite;
+}
+.animate-node {
+  animation: shell-node 3.4s ease-in-out infinite;
+}
+.animate-cpu-pulse {
+  animation: shell-cpu-pulse 1.6s ease-in-out infinite;
+}
+.panic-hop {
+  animation: shell-panic-hop 0.7s ease-in-out;
+}
+
+.terminal-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.terminal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(58, 138, 208, 0.3);
+  border-radius: 3px;
+}
+.terminal-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.shell-btn {
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 1.5px;
+  transition: all 150ms ease;
+}
+.shell-btn:hover {
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.35);
+}

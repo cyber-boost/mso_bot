@@ -8,6 +8,7 @@ import { MaestroMark } from "@/components/mark";
 import { ModelRail } from "@/components/model-rail";
 import { PlayArena } from "@/components/play-arena";
 import { PlayPanel } from "@/components/play-panel";
+import { ShellView } from "@/components/shell-view";
 import { ProviderLogo } from "@/components/provider-logo";
 import { resolveHarness } from "@/lib/harness";
 import { useMaestro, type View } from "@/lib/store";
@@ -16,6 +17,7 @@ import { cn } from "@/lib/utils";
 
 const NAV: { id: View; label: string; icon: typeof MessageSquare }[] = [
   { id: "chat", label: "Chat", icon: MessageSquare },
+  { id: "shell", label: "Shell", icon: Bot },
   { id: "harness", label: "Harness", icon: Workflow },
   { id: "catalog", label: "Catalog", icon: Library },
   { id: "keys", label: "Keys", icon: Keyboard },
@@ -153,6 +155,14 @@ export function Console({ index }: { index: CatalogIndex }) {
             )}
           >
             <PlayArena index={index} active={view === "play"} />
+          </div>
+          <div
+            className={cn(
+              "min-h-0 min-w-0 flex-1 flex-col",
+              view === "shell" ? "flex" : "hidden",
+            )}
+          >
+            <ShellView index={index} />
           </div>
         </main>
       </div>
