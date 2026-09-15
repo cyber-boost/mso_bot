@@ -83,6 +83,7 @@ jobs:
         run: node scripts/build-frontend.mjs
 
       - name: Fetch backend sidecar (Node runtime)
+        shell: bash
         run: |
           if [ "${{ matrix.target }}" = "universal-apple-darwin" ]; then
             # Universal macOS bundles BOTH arch node sidecars.
