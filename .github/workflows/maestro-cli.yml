@@ -1,0 +1,143 @@
+name: Build Maestro CLI (Nuitka)
+
+# Compiles the single-file, stdlib-only maestro/maestro.py into native
+# onefile binaries (Python -> C -> machine code) with Nuitka.
+#
+# Artifacts per run: maestro-cli-{windows-x64,macos-arm64,macos-x64,
+# linux-x64,linux-arm64}
+# Releases: pushing a vX.Y.Z tag attaches every binary to that GitHub
+# Release. Tag pushes ignore the `paths:` filter (actions/runner#3933),
+# so tagging always produces a full build.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths:
+      - 'maestro/**'
+      - '.github/workflows/maestro-cli.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: maestro-cli-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: maestro-cli ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # MSVC is preinstalled on GitHub's Windows runners; Nuitka
+          # locates it automatically (fallback: downloads MinGW).
+          - os: windows-latest
+            name: windows-x64
+            filename: maestro-windows-x64.exe
+          # macos-latest = Apple Silicon (arm64).
+          - os: macos-latest
+            name: macos-arm64
+            filename: maestro-macos-arm64
+          # macos-15-intel is the last x86_64 macOS image (arch retires
+          # with it in Fall 2027).
+          - os: macos-15-intel
+            name: macos-x64
+            filename: maestro-macos-x64
+          # Built on 22.04 so the binary targets glibc 2.35 — runs on
+          # Ubuntu 22.04+, Debian 12+, RHEL 9+ and friends.
+          - os: ubuntu-22.04
+            name: linux-x64
+            filename: maestro-linux-x64
+          # ARM64 Linux — Arm-hosted runners, free for public repos.
+          - os: ubuntu-22.04-arm
+            name: linux-arm64
+            filename: maestro-linux-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12' # paired with the Nuitka pin below
+
+      - name: Install Nuitka
+        # nuitka==4.2.1 + CPython 3.12 is the validated pair; bump them
+        # together. zstandard = onefile payload compression, ordered-set
+        # = faster compilation.
+        run: python -m pip install --disable-pip-version-check nuitka==4.2.1 zstandard ordered-set
+
+      - name: Read version from maestro.py
+        shell: bash
+        run: |
+          set -euo pipefail
+          v="$(sed -n 's/^VERSION = "\(.*\)"$/\1/p' maestro/maestro.py)"
+          if [ -z "$v" ]; then
+            echo "could not parse VERSION from maestro/maestro.py" >&2
+            exit 1
+          fi
+          echo "MAESTRO_VERSION=$v" >> "$GITHUB_ENV"
+          echo "building maestro $v"
+
+      - name: Compile with Nuitka
+        shell: bash
+        run: |
+          python -m nuitka \
+            --onefile \
+            --assume-yes-for-downloads \
+            --remove-output \
+            --output-dir=build \
+            --output-filename='${{ matrix.filename }}' \
+            --onefile-tempdir-spec='{CACHE_DIR}/{PRODUCT}/{VERSION}' \
+            --company-name=mso \
+            --product-name=Maestro \
+            --product-version="${MAESTRO_VERSION}.0" \
+            --file-version="${MAESTRO_VERSION}.0" \
+            --file-description='Maestro - conduct local and cloud models' \
+            maestro/maestro.py
+          ls -la build/
+
+      - name: Ad-hoc codesign (macOS)
+        # Unsigned arm64 binaries are killed by the macOS kernel; ad-hoc
+        # signing keeps the binary runnable (Gatekeeper still asks on
+        # first launch: right-click > Open, or xattr -dr com.apple.quarantine).
+        if: startsWith(matrix.os, 'macos')
+        run: codesign --force --sign - "build/${{ matrix.filename }}"
+
+      - name: Smoke test
+        # Never run the binary bare: without args it launches an
+        # interactive chat session. `--version` is offline + deterministic.
+        shell: bash
+        run: |
+          ver="$(./build/'${{ matrix.filename }}' --version)"
+          echo "$ver"
+          echo "$ver" | grep -q '^maestro '
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-cli-${{ matrix.name }}
+          path: build/${{ matrix.filename }}
+          if-no-files-found: error
+
+  release:
+    name: Attach binaries to release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all platform binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: maestro-cli-*
+          merge-multiple: true
+
+      - name: Attach to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          fail_on_unmatched_files: true
+          generate_release_notes: true

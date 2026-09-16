@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Terminal as XTerm } from "@xterm/xterm";
+// @xterm/xterm ships real ESM (.mjs) for bundlers AND a CJS build that Vite's
+// dev SSR runner resolves via interop — these disagree about how to import it
+// (named vs default). A namespace import works for both, which the previous
+// named-export import did not (dev SSR) and a default import did not (build).
+import * as XTermNs from "@xterm/xterm";
+const XTerm = XTermNs.Terminal;
 import "@xterm/xterm/css/xterm.css";
 import { Terminal as TermIcon, Trophy, Plus, RotateCcw } from "lucide-react";
 import { THEME, BotConfig, LogEntry, levelTitle } from "@/lib/shell";
@@ -47,7 +52,7 @@ export function ShellView({
   const [busy, setBusy] = useState(false);
   const [prompt, setPrompt] = useState("");
   const xtermEl = useRef<HTMLDivElement>(null);
-  const termRef = useRef<XTerm | null>(null);
+  const termRef = useRef<InstanceType<typeof XTerm> | null>(null);
   const pendingRef = useRef<string>("");
   const shell = useShell();
   const bot = botFor(0, selection.providerId, selection.modelId);

@@ -66,3 +66,30 @@ export type Selection = {
   providerId: string;
   modelId: string;
 };
+
+/** Detection metadata for a single env var key, returned by the Sniffer. */
+export type SniffResult = {
+  key: string;
+  found: boolean;
+  masked: string | null;
+  confidence: number;
+  source: string | null;
+  /** Raw value — only returned on explicit activation, never in the list. */
+  value: string | null;
+};
+
+/** Per-provider Sniffer result, mirroring the provider's catalog metadata. */
+export type ProviderSniff = {
+  id: string;
+  name: string;
+  protocol: string;
+  api: string | null;
+  env: string[];
+  found: string | null;
+  result: SniffResult | null;
+};
+
+export type SniffIndex = {
+  providers: ProviderSniff[];
+  checkedAt: string;
+};

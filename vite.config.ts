@@ -150,6 +150,21 @@ export default defineConfig(({ command, isPreview }) => ({
     host: "0.0.0.0",
     port: 8080,
     strictPort: true,
+    watch: {
+      // Don't watch large build/output dirs: cargo's target/ and sidecar files
+      // are locked transiently during Tauri builds and downloads, and a Vite
+      // watcher hitting a locked file crashes the dev server with EBUSY. None
+      // of these are authored frontend sources, so ignoring them is safe.
+      ignored: [
+        "**/src-tauri/target/**",
+        "**/src-tauri/binaries/**",
+        "**/.output/**",
+        "**/.desktop-shell/**",
+        "**/.grok/**",
+        "**/build/**",
+        "**/dist/**",
+      ],
+    },
   },
   preview: {
     host: "127.0.0.1",
