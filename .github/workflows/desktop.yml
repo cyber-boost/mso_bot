@@ -23,23 +23,29 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows x64
+          # Windows x64 (host arch; output stays in target/release/bundle)
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+            build_args: "--verbose"
             artifacts: |
               src-tauri/target/release/bundle/nsis/*-setup.exe
               src-tauri/target/release/bundle/msi/*.msi
             name: maestro-windows-x64
-          # macOS universal (Intel + Apple Silicon)
+          # macOS universal (Intel + Apple Silicon). tauri-action@v0
+          # dropped the `target:` input (it warns + ignores it), so
+          # --target travels via args; a --target build emits to
+          # target/<triple>/release/bundle, hence the globs below.
           - os: macos-latest
             target: universal-apple-darwin
+            build_args: "--target universal-apple-darwin --verbose"
             artifacts: |
-              src-tauri/target/release/bundle/macos/*.app.tar.gz
-              src-tauri/target/release/bundle/dmg/*.dmg
+              src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz
+              src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
             name: maestro-macos-universal
-          # Linux x64 (glibc)
+          # Linux x64 (glibc; host arch)
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
+            build_args: "--verbose"
             artifacts: |
               src-tauri/target/release/bundle/deb/*.deb
               src-tauri/target/release/bundle/appimage/*.AppImage
@@ -99,8 +105,29 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          target: ${{ matrix.target }}
-          args: --verbose
+          # The `target:` input no longer exists in tauri-action@v0 —
+          # passing it only produces a warning and it is silently
+          # ignored. --target goes through args (see matrix build_args).
+          args: ${{ matrix.build_args }}
+
+      - name: Verify universal binary (macOS)
+        # Gate: an arm64-only binary claiming to be "universal" fails
+        # the build instead of shipping silently.
+        if: matrix.target == 'universal-apple-darwin'
+        run: |
+          app=(src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app)
+          bin="$app/Contents/MacOS/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"
+          echo "app binary: $bin"
+          archs="$(lipo -archs "$bin")"
+          echo "archs: $archs"
+          case "$archs" in
+            *x86_64*) ;;
+            *) echo "NOT universal: x86_64 slice missing" >&2; exit 1 ;;
+          esac
+          case "$archs" in
+            *arm64*) ;;
+            *) echo "NOT universal: arm64 slice missing" >&2; exit 1 ;;
+          esac
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
