@@ -18,7 +18,7 @@
  *   node scripts/fetch-sidecar.mjs                    # host arch/OS
  */
 import { createRequire } from "node:module";
-import { createWriteStream, existsSync, mkdirSync, readdirSync, renameSync, rmSync } from "node:fs";
+import { chmodSync, copyFileSync, createWriteStream, existsSync, mkdirSync, readdirSync, renameSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { get as httpsGet } from "node:https";
@@ -139,9 +139,17 @@ if (target === "universal-apple-darwin") {
       console.error(`[fetch-sidecar] node binary not found inside ${slice} archive`);
       process.exit(1);
     }
+    // tauri_build resolves externalBin with EACH cargo target slice at
+    // compile time (TAURI_ENV_TARGET_TRIPLE), so the standalone per-arch
+    // sidecars must exist too; the bundler's copy stage uses the merged
+    // universal file created below. Both sets are required.
+    const slicePath = join(OUT_DIR, `maestro-backend-${slice}`);
+    copyFileSync(found, slicePath);
+    chmodSync(slicePath, 0o755);
     slices.push(found);
   }
   execFileSync("lipo", ["-create", "-output", outPath, ...slices], { stdio: "inherit" });
+  chmodSync(outPath, 0o755);
   execFileSync("codesign", ["--force", "--sign", "-", outPath], { stdio: "inherit" });
   console.log(`[fetch-sidecar] ${outName} archs: ${execFileSync("lipo", ["-archs", outPath]).toString().trim()}`);
   for (const [i, slice] of sliceNames.entries()) {
