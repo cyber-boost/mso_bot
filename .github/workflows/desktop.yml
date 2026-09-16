@@ -90,15 +90,10 @@ jobs:
         run: node scripts/build-frontend.mjs
 
       - name: Fetch backend sidecar (Node runtime)
+        # fetch-sidecar.mjs handles every target, incl. universal-apple-darwin
+        # (fetches both arch slices, lipo-merges them, ad-hoc codesigns).
         shell: bash
-        run: |
-          if [ "${{ matrix.target }}" = "universal-apple-darwin" ]; then
-            # Universal macOS bundles BOTH arch node sidecars.
-            node scripts/fetch-sidecar.mjs --target x86_64-apple-darwin
-            node scripts/fetch-sidecar.mjs --target aarch64-apple-darwin
-          else
-            node scripts/fetch-sidecar.mjs --target ${{ matrix.target }}
-          fi
+        run: node scripts/fetch-sidecar.mjs --target ${{ matrix.target }}
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0

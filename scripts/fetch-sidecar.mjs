@@ -108,6 +108,52 @@ function extractArchive(kind, archivePath, tmpDirPath) {
 
 const argIdx = process.argv.indexOf("--target");
 const target = argIdx !== -1 ? process.argv[argIdx + 1] : hostTarget();
+
+// Universal macOS: the Tauri bundler expects ONE sidecar named
+// `maestro-backend-universal-apple-darwin` (it appends the build target
+// to externalBin). Node ships no universal binaries, so fetch both arch
+// slices and lipo-merge them, then re-sign ad-hoc — lipo invalidates the
+// original signature, and an unsigned arm64 slice is killed by the macOS
+// kernel. Requires macOS (lipo/codesign are macOS-only tools).
+if (target === "universal-apple-darwin") {
+  const outName = "maestro-backend-universal-apple-darwin";
+  const outPath = join(OUT_DIR, outName);
+  if (process.env.SIDECAR_FORCE !== "1" && existsSync(outPath)) {
+    console.log(`[fetch-sidecar] ${outName} already present — skipping (SIDECAR_FORCE=1 to override).`);
+    process.exit(0);
+  }
+  mkdirSync(OUT_DIR, { recursive: true });
+  const sliceNames = ["x86_64-apple-darwin", "aarch64-apple-darwin"];
+  const slices = [];
+  for (const slice of sliceNames) {
+    const spec = resolveTarget(slice);
+    const archive = `${outPath}.${slice}.tar.gz`;
+    const tmpDir = `${outPath}.${slice}.dir`;
+    console.log(`[fetch-sidecar] ${slice} <- ${DIST}/v${NODE_VERSION}/${spec.pkg}`);
+    try { rmSync(archive, { force: true }); rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ }
+    await download(`${DIST}/v${NODE_VERSION}/${spec.pkg}`, archive);
+    mkdirSync(tmpDir, { recursive: true });
+    extractArchive("tar", archive, tmpDir);
+    const found = walk(tmpDir).find((p) => p.endsWith("/node") || p.endsWith("\\node"));
+    if (!found) {
+      console.error(`[fetch-sidecar] node binary not found inside ${slice} archive`);
+      process.exit(1);
+    }
+    slices.push(found);
+  }
+  execFileSync("lipo", ["-create", "-output", outPath, ...slices], { stdio: "inherit" });
+  execFileSync("codesign", ["--force", "--sign", "-", outPath], { stdio: "inherit" });
+  console.log(`[fetch-sidecar] ${outName} archs: ${execFileSync("lipo", ["-archs", outPath]).toString().trim()}`);
+  for (const [i, slice] of sliceNames.entries()) {
+    try {
+      rmSync(`${outPath}.${slice}.tar.gz`, { force: true });
+      rmSync(dirname(slices[i]), { recursive: true, force: true });
+    } catch { /* ignore */ }
+  }
+  console.log(`[fetch-sidecar] wrote ${outName}`);
+  process.exit(0);
+}
+
 const spec = resolveTarget(target);
 if (!target || !spec) {
   console.error(`[fetch-sidecar] unsupported or unknown target: ${target}`);
