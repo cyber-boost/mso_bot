@@ -341,3 +341,68 @@
     animation: none;
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Conductor — leveling chrome (rings, badges, celebration)
+ * ------------------------------------------------------------------ */
+@keyframes level-ring-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 3px rgba(0, 212, 255, 0.45));
+  }
+  50% {
+    filter: drop-shadow(0 0 9px rgba(0, 212, 255, 0.8));
+  }
+}
+.level-ring-live {
+  animation: level-ring-glow 2.8s ease-in-out infinite;
+}
+
+@keyframes celebrate-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.82) translateY(10px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.04) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.celebrate-in {
+  animation: celebrate-in 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes celebrate-burst {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--bx, 0), var(--by, 0)) scale(0.4);
+  }
+}
+.celebrate-burst {
+  animation: celebrate-burst 1100ms cubic-bezier(0.16, 0.8, 0.3, 1) both;
+}
+
+.badge-unlocked {
+  box-shadow:
+    0 0 10px rgba(0, 212, 255, 0.25),
+    inset 0 0 8px rgba(0, 212, 255, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .level-ring-live,
+  .celebrate-in,
+  .celebrate-burst {
+    animation: none;
+  }
+  .celebrate-in {
+    opacity: 1;
+  }
+}

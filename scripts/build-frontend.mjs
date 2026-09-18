@@ -37,4 +37,14 @@ try {
   console.error("[build-frontend] fix-ssr-css-refs failed:", err);
   process.exit(1);
 }
+
+// Ship the PGlite engine assets the embedded PGLite fallback opens at runtime
+// (they resolve next to the bundled chunk, and Rollup doesn't emit them).
+const pgliteAssets = join(ROOT, "scripts", "copy-pglite-assets.mjs");
+try {
+  execFileSync(process.execPath, [pgliteAssets], { stdio: "inherit" });
+} catch (err) {
+  console.error("[build-frontend] copy-pglite-assets failed:", err);
+  process.exit(1);
+}
 console.log("[build-frontend] frontend .output ready.");

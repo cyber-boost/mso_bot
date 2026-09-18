@@ -17,6 +17,7 @@ import {
   type ChatMessage,
 } from "@/lib/protocol";
 import { runWithHarness } from "@/lib/run-harness";
+import { useShell } from "@/lib/shell-store";
 import { useMaestro } from "@/lib/store";
 import type { CatalogIndex, ModelRow, ProviderInfo } from "@/lib/types";
 import { cn, formatTokens, formatUsd } from "@/lib/utils";
@@ -159,6 +160,7 @@ export function PlayPanel({
           signal: ac.signal,
         },
       );
+      useShell.getState().award("chat", 10);
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
       const msg = e instanceof Error ? e.message : "Chat failed";

@@ -49,7 +49,9 @@ export const TOOL_META: { id: ToolId; name: string; blurb: string }[] = [
   { id: "reflect", name: "reflect", blurb: "A beat to think before acting." },
 ];
 
-const TOOL_RE = /<tool\s+name=["']([a-z]+)["']>\s*([\s\S]*?)\s*<\/tool>\s*$/i;
+// Tool names: builtin ids are lowercase words; MCP tools arrive namespaced as
+// mcp__server__tool (letters, digits, underscores, dots, dashes).
+const TOOL_RE = /<tool\s+name=["']([a-z0-9_.-]+)["']>\s*([\s\S]*?)\s*<\/tool>\s*$/i;
 
 export const BUILTINS: Harness[] = [
   {
@@ -246,9 +248,11 @@ export function splitTool(text: string): {
   return { text: text.slice(0, m.index).trimEnd(), call: { name, args } };
 }
 
-function toolProtocol(tools: ToolId[]): string {
+export type ExtraTool = { name: string; blurb: string };
+
+function toolProtocol(tools: ToolId[], extraTools: ExtraTool[] = []): string {
   const allowed = TOOL_META.filter((t) => tools.includes(t.id));
-  if (!allowed.length) return "";
+  if (!allowed.length && !extraTools.length) return "";
   const catalog = allowed
     .map((t) => {
       if (t.id === "catalog") return `- catalog  { "q": "search text" }`;
@@ -258,21 +262,24 @@ function toolProtocol(tools: ToolId[]): string {
       return `- reflect  { "thought": "one beat" }`;
     })
     .join("\n");
+  const external = extraTools
+    .map((t) => `- ${t.name}  (JSON args per its schema) — ${t.blurb}`)
+    .join("\n");
   return `You may call a tool by ending your reply with a single tag and nothing after it:
 
 <tool name="catalog">{"q":"grok"}</tool>
 
 Available tools:
-${catalog}
+${[catalog, external].filter(Boolean).join("\n")}
 
 If you can answer without a tool, do not emit a tool tag.`;
 }
 
-export function compileSystem(h: Harness, overlay?: string): string {
+export function compileSystem(h: Harness, overlay?: string, extraTools?: ExtraTool[]): string {
   const parts: string[] = [];
   if (h.instructions.trim()) parts.push(h.instructions.trim());
   if (h.loop === "react") {
-    const proto = toolProtocol(h.tools);
+    const proto = toolProtocol(h.tools, extraTools);
     if (proto) parts.push(proto);
   }
   if (overlay?.trim()) parts.push(overlay.trim());

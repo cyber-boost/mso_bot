@@ -1,8 +1,18 @@
 import { create } from "zustand";
 import { levelOf } from "@/lib/shell";
+import {
+  ACHIEVEMENTS,
+  blankProfile,
+  earnedAchievements,
+  isProfile,
+  streakFor,
+  type ConductorProfile,
+  type XpSource,
+} from "@/lib/leveling";
 
-// Lightweight gamification for the Term/Shell view — XP/levels/achievements in
-// localStorage, driven by real chat turns. No PTY/backend dependency.
+// Gamification for Maestro: per-robot shell stats (the Term/Shell view bots)
+// plus ONE conductor profile fed by every XP-earning move in the console —
+// chat turns, shell runs, pulse beats, channel messages. All localStorage.
 type RobotState = {
   pid: number;
   name: string;
@@ -12,15 +22,31 @@ type RobotState = {
   achievements: string[];
 };
 
+export type Celebration =
+  | { kind: "level"; at: number; level: number }
+  | { kind: "achievement"; at: number; achievementIds: string[] };
+
+export type AwardResult = {
+  xpGained: number;
+  newLevel: number | null;
+  newAchievements: string[];
+};
+
 type ShellState = {
   robots: Record<string, RobotState>;
   recordCommand: (name: string, baseXp?: number) => { xpGained: number; newLevel: number | null; achievement: string | null };
   getState: (name: string) => RobotState;
   reset: () => void;
+
+  profile: ConductorProfile;
+  award: (source: XpSource, baseXp?: number) => AwardResult;
+  celebration: Celebration | null;
+  dismissCelebration: () => void;
+  resetProfile: () => void;
 };
 
 const KEY = "maestro.shell.robots";
-const ACHIEVEMENTS = ["FIRST_CONDUCT", "CONDUCTOR", "MAESTRO", "VIRTUOSO", "SYMPHONY"];
+const PROFILE_KEY = "maestro.conductor";
 
 function nextPid(): number {
   return 1000 + Math.floor(Math.random() * 8999);
@@ -36,8 +62,34 @@ function readRobots(): Record<string, RobotState> {
   return {};
 }
 
+function readProfile(): ConductorProfile {
+  try {
+    const raw = localStorage.getItem(PROFILE_KEY);
+    if (!raw) return blankProfile();
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isProfile(parsed)) return blankProfile();
+    // Merge over a blank so new sources added later never read undefined.
+    const base = blankProfile();
+    return {
+      ...base,
+      ...parsed,
+      perSource: { ...base.perSource, ...parsed.perSource },
+    };
+  } catch {
+    return blankProfile();
+  }
+}
+
+function persistProfile(p: ConductorProfile) {
+  try {
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+  } catch {
+    /* ignore */
+  }
+}
+
 export const useShell = create<ShellState>((set, get) => ({
-  robots: readRobots(),
+  robots: typeof window === "undefined" ? {} : readRobots(),
 
   recordCommand: (name, baseXp = 10) => {
     const robots = { ...get().robots };
@@ -96,4 +148,53 @@ export const useShell = create<ShellState>((set, get) => ({
     }
     set({ robots: {} });
   },
+
+  profile: typeof window === "undefined" ? blankProfile() : readProfile(),
+
+  award: (source, baseXp = 10) => {
+    const prev = get().profile;
+    const xpGained = Math.round(baseXp * (0.85 + Math.random() * 0.4));
+    const streak = streakFor(prev, new Date());
+    const profile: ConductorProfile = {
+      ...prev,
+      xp: prev.xp + xpGained,
+      events: prev.events + 1,
+      streakDays: streak.streakDays,
+      lastDay: streak.lastDay,
+      perSource: {
+        ...prev.perSource,
+        [source]: (prev.perSource[source] ?? 0) + 1,
+      },
+    };
+
+    const beforeLevel = levelOf(prev.xp);
+    const afterLevel = levelOf(profile.xp);
+    const newLevel = afterLevel > beforeLevel ? afterLevel : null;
+    const earned = earnedAchievements(profile);
+    const newAchievements = earned.filter((id) => !prev.achievements.includes(id));
+    profile.achievements = earned;
+
+    let celebration: Celebration | null = null;
+    if (newLevel) celebration = { kind: "level", at: Date.now(), level: newLevel };
+    else if (newAchievements.length)
+      celebration = { kind: "achievement", at: Date.now(), achievementIds: newAchievements };
+
+    set({ profile, celebration: celebration ?? get().celebration });
+    persistProfile(profile);
+    return { xpGained, newLevel, newAchievements };
+  },
+
+  celebration: null,
+  dismissCelebration: () => set({ celebration: null }),
+
+  resetProfile: () => {
+    try {
+      localStorage.removeItem(PROFILE_KEY);
+    } catch {
+      /* ignore */
+    }
+    set({ profile: blankProfile(), celebration: null });
+  },
 }));
+
+export { ACHIEVEMENTS };

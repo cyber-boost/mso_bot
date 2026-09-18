@@ -11,9 +11,12 @@ services:
       - NODE_ENV=production
       - HOST=0.0.0.0
       - PORT=8080
+      # Persist the embedded PGLite database (channels, etc.). Point it at the
+      # optional volume below so data survives image rebuilds.
+      - PGLITE_DIR=/app/.pglite-data
       # Optional: set a server-side xAI key so the console works without
       # everyone pasting their own key in the Keys panel.
       # - XAI_API_KEY=your-xai-key-here
-    # Optional volume if a future DB/data dir is added.
+    # Optional volume for the PGLite database.
     # volumes:
-    #   - maestro-data:/data
+    #   - maestro-data:/app/.pglite-data

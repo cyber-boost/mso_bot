@@ -6,6 +6,7 @@ import type { ModelRow, Selection } from "./types";
 export type View =
   | "chat"
   | "pulse"
+  | "channels"
   | "catalog"
   | "harness"
   | "keys"

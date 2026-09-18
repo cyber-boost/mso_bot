@@ -23,6 +23,7 @@ import {
   type PulseMode,
   type PulseRun,
 } from "./pulse";
+import { useShell } from "./shell-store";
 import { useMaestro } from "./store";
 
 const PULSES_KEY = "maestro.pulses";
@@ -295,6 +296,7 @@ async function fire(id: string): Promise<void> {
     liveBuffers.delete(id);
     const finalText = buf?.text ?? "";
     const doneAt = Date.now();
+    if (status === "ok") useShell.getState().award("pulse", 15);
     patchPulse(id, (p) => ({
       ...p,
       lastRunAt: doneAt,

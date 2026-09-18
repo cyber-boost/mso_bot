@@ -4,12 +4,34 @@ import {
   compileSystem,
   runTool,
   splitTool,
+  type ExtraTool,
   type Harness,
   type ToolCtx,
   type ToolId,
   type TraceEvent,
 } from "./harness";
+import { callMcpTool } from "./mcp-client";
+import { activeServers, MCP_ADVERTISE_CAP, mcpToolName, useMcp, type McpServer } from "./mcp";
 import type { ChatMessage } from "./protocol";
+
+type McpRuntimeTool = { wire: string; server: McpServer; tool: string; blurb: string };
+
+/** Enabled + connected MCP servers' tools, flattened for the react loop. */
+function gatherMcpTools(): McpRuntimeTool[] {
+  const out: McpRuntimeTool[] = [];
+  for (const server of activeServers(useMcp.getState().servers)) {
+    for (const t of server.tools) {
+      if (out.length >= MCP_ADVERTISE_CAP) return out;
+      out.push({
+        wire: mcpToolName(server, t.name),
+        server,
+        tool: t.name,
+        blurb: (t.description ?? `${server.name} tool`).slice(0, 100),
+      });
+    }
+  }
+  return out;
+}
 
 export type RunRequest = {
   harness: Harness;
@@ -74,8 +96,10 @@ export async function runWithHarness(req: RunRequest, hooks: RunHooks): Promise<
 
 async function runReact(req: RunRequest, hooks: RunHooks): Promise<void> {
   const traces: TraceEvent[] = [];
+  const mcpTools = gatherMcpTools();
+  const extraTools: ExtraTool[] = mcpTools.map((t) => ({ name: t.wire, blurb: t.blurb }));
   const messages: ChatMessage[] = [
-    ...sys(compileSystem(req.harness, req.overlay)),
+    ...sys(compileSystem(req.harness, req.overlay, extraTools)),
     ...req.history,
   ];
   const maxSteps = Math.min(Math.max(req.harness.maxSteps || 4, 1), 6);
@@ -93,6 +117,30 @@ async function runReact(req: RunRequest, hooks: RunHooks): Promise<void> {
     shown = shown + text;
     hooks.onText(shown);
     if (!call) return;
+
+    // MCP tool? Dispatch over the bridge to the owning server.
+    const mcp = call.name.startsWith("mcp__") ? mcpTools.find((t) => t.wire === call.name) : null;
+    if (mcp) {
+      let result: string;
+      try {
+        result = await callMcpTool(mcp.server, mcp.tool, call.args);
+        result = result.slice(0, 4000);
+      } catch (e) {
+        result = `MCP error: ${e instanceof Error ? e.message : "call failed"}`;
+      }
+      traces.push({
+        id: crypto.randomUUID(),
+        kind: "tool",
+        label: `${mcp.server.name} · ${mcp.tool}`,
+        detail: result.split("\n")[0]?.slice(0, 80),
+      });
+      hooks.onTraces([...traces]);
+      messages.push({ role: "assistant", content: acc });
+      messages.push({ role: "user", content: `TOOL RESULT (${mcp.wire}):\n${result}` });
+      if (shown) shown += "\n\n";
+      continue;
+    }
+
     if (!req.harness.tools.includes(call.name as ToolId)) {
       traces.push({
         id: crypto.randomUUID(),

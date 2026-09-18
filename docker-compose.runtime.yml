@@ -14,5 +14,8 @@ services:
       - NODE_ENV=production
       - HOST=0.0.0.0
       - PORT=8080
+      # Persist the embedded PGLite database (channels, etc.) onto the host via
+      # the .output bind mount so it survives container restarts and rebuilds.
+      - PGLITE_DIR=/app/.output/.pglite-data
       # Optional server-side xAI key.
       # - XAI_API_KEY=your-xai-key-here

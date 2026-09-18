@@ -1,7 +1,9 @@
-import { Activity, BookOpen, Bot, Keyboard, Library, MessageSquare, Menu, Workflow, X } from "lucide-react";
+import { Activity, BookOpen, Bot, Keyboard, Library, MessageSquare, Menu, Radio, Workflow, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CatalogPanel } from "@/components/catalog-panel";
+import { ChannelsPanel } from "@/components/channels-panel";
 import { CliPanel } from "@/components/cli-panel";
+import { CelebrationOverlay } from "@/components/conductor-panel";
 import { HarnessPanel } from "@/components/harness-panel";
 import { KeysPanel } from "@/components/keys-panel";
 import { MaestroMark } from "@/components/mark";
@@ -11,6 +13,7 @@ import { PlayPanel } from "@/components/play-panel";
 import { PulsePanel } from "@/components/pulse-panel";
 import { ShellView } from "@/components/shell-view";
 import { ProviderLogo } from "@/components/provider-logo";
+import { startChannelWatch, stopChannelWatch } from "@/lib/channel-watch";
 import { resolveHarness } from "@/lib/harness";
 import { startPulseEngine, stopPulseEngine, usePulses } from "@/lib/pulse-store";
 import { useMaestro, type View } from "@/lib/store";
@@ -20,6 +23,7 @@ import { cn } from "@/lib/utils";
 const NAV: { id: View; label: string; icon: typeof MessageSquare }[] = [
   { id: "chat", label: "Chat", icon: MessageSquare },
   { id: "pulse", label: "Pulse", icon: Activity },
+  { id: "channels", label: "Channels", icon: Radio },
   { id: "shell", label: "Shell", icon: Bot },
   { id: "harness", label: "Harness", icon: Workflow },
   { id: "catalog", label: "Catalog", icon: Library },
@@ -47,7 +51,11 @@ export function Console({ index }: { index: CatalogIndex }) {
   useEffect(() => {
     hydrate();
     startPulseEngine();
-    return () => stopPulseEngine();
+    startChannelWatch();
+    return () => {
+      stopPulseEngine();
+      stopChannelWatch();
+    };
   }, [hydrate]);
 
   const provider = useMemo(
@@ -157,6 +165,7 @@ export function Console({ index }: { index: CatalogIndex }) {
             <PlayPanel index={index} model={model} provider={provider} />
           ) : null}
           {view === "pulse" ? <PulsePanel index={index} /> : null}
+          {view === "channels" ? <ChannelsPanel /> : null}
           {view === "harness" ? <HarnessPanel /> : null}
           {view === "catalog" ? <CatalogPanel index={index} /> : null}
           {view === "keys" ? <KeysPanel index={index} /> : null}
@@ -181,7 +190,7 @@ export function Console({ index }: { index: CatalogIndex }) {
       </div>
 
       <nav
-        className="flex h-14 shrink-0 items-stretch border-t border-border md:hidden"
+        className="no-scrollbar flex h-14 shrink-0 items-stretch overflow-x-auto border-t border-border md:hidden"
         aria-label="Mobile"
       >
         {NAV.map((n) => {
@@ -196,7 +205,7 @@ export function Console({ index }: { index: CatalogIndex }) {
                 setRailOpen(false);
               }}
               className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-0.5 text-micro",
+                "flex min-w-16 flex-1 flex-col items-center justify-center gap-0.5 text-micro",
                 on ? "text-fg" : "text-subtle",
               )}
             >
@@ -207,6 +216,7 @@ export function Console({ index }: { index: CatalogIndex }) {
         })}
       </nav>
       {hydrated ? null : null}
+      <CelebrationOverlay />
     </div>
   );
 }

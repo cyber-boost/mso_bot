@@ -6,9 +6,10 @@ import { useEffect, useRef, useState } from "react";
 import * as XTermNs from "@xterm/xterm";
 const XTerm = XTermNs.Terminal;
 import "@xterm/xterm/css/xterm.css";
-import { Terminal as TermIcon, Trophy, Plus, RotateCcw } from "lucide-react";
-import { THEME, BotConfig, LogEntry, levelTitle } from "@/lib/shell";
+import { Terminal as TermIcon, Trophy, Plus, RotateCcw, X } from "lucide-react";
+import { THEME, BotConfig, LogEntry } from "@/lib/shell";
 import { useShell } from "@/lib/shell-store";
+import { ConductorPanel } from "@/components/conductor-panel";
 import { useMaestro } from "@/lib/store";
 import { streamChat } from "@/lib/chat";
 import RobotAvatar from "@/components/shell/RobotAvatar";
@@ -48,7 +49,7 @@ export function ShellView({
   const { selection, keys, hydrate } = useMaestro();
   const providers = index.providers || [];
   const [deployed, setDeployed] = useState<string | null>(null);
-  const [logs, setLogs] = useState<LogEntry[]>([]);
+  // Log lines stream straight into xterm; no React copy kept.
   const [busy, setBusy] = useState(false);
   const [prompt, setPrompt] = useState("");
   const xtermEl = useRef<HTMLDivElement>(null);
@@ -56,7 +57,9 @@ export function ShellView({
   const pendingRef = useRef<string>("");
   const shell = useShell();
   const bot = botFor(0, selection.providerId, selection.modelId);
-  const st = shell.getState(bot.name);
+  shell.getState(bot.name); // ensure the bot row exists
+  const profile = shell.profile;
+  const [panelOpen, setPanelOpen] = useState(false);
   const ready = Boolean(keys[selection.providerId]) || selection.providerId === "xai";
 
   useEffect(() => {
@@ -103,10 +106,6 @@ export function ShellView({
   };
 
   const spawnLog = (message: string, level: LogEntry["level"] = "info") => {
-    setLogs((l) => [
-      ...l.slice(-60),
-      { id: crypto.randomUUID(), pid: st.pid, level, timestamp: new Date().toLocaleTimeString(), message },
-    ]);
     const line = `\x1b[90m[${new Date().toLocaleTimeString()}]\x1b[0m ${message}\n`;
     pendingRef.current += line;
     setTimeout(flushPending, 0);
@@ -122,6 +121,7 @@ export function ShellView({
     pendingRef.current += "\x1b[32m▸\x1b[0m ";
     flushPending();
     const g = shell.recordCommand(bot.name);
+    shell.award("shell", 10);
     try {
       await streamChat(
         {
@@ -168,10 +168,16 @@ export function ShellView({
         <div className="flex items-center gap-3 text-[10px]" style={{ fontFamily: "'Share Tech Mono',monospace" }}>
           <span style={{ color: THEME.glow }}>{bot.name}</span>
           <span style={{ color: "rgba(58,138,208,0.6)" }}>{selection.providerId}</span>
-          <span className="flex items-center gap-1" style={{ color: "#FFD700" }}>
-            <Trophy size={11} /> Lv.{levelFor(st.xp)} {levelTitle(levelFor(st.xp))} · {st.xp} XP
-          </span>
-          <button onClick={() => shell.reset()} className="shell-btn p-1 rounded" title="Reset progress"
+          <button
+            type="button"
+            onClick={() => setPanelOpen((v) => !v)}
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 transition-colors"
+            style={{ color: "#FFD700", background: "rgba(255,215,0,0.07)", border: "1px solid rgba(255,215,0,0.22)" }}
+            title="Conductor profile"
+          >
+            <Trophy size={11} /> Lv.{levelFor(profile.xp)} · {profile.xp} XP
+          </button>
+          <button onClick={() => shell.reset()} className="shell-btn p-1 rounded" title="Reset bot progress"
             style={{ color: "rgba(58,138,208,0.6)" }}>
             <RotateCcw size={12} />
           </button>
@@ -222,7 +228,43 @@ export function ShellView({
             </button>
           </div>
         </main>
+
+        {/* Conductor profile — desktop column */}
+        <aside
+          className="hidden w-[270px] shrink-0 border-l lg:flex"
+          style={{ borderColor: THEME.panelBorder }}
+        >
+          <ConductorPanel />
+        </aside>
       </div>
+
+      {/* Conductor profile — mobile slide-over */}
+      {panelOpen ? (
+        <div className="fixed inset-0 z-40 flex justify-end bg-black/50 lg:hidden"
+          onClick={() => setPanelOpen(false)}
+        >
+          <div
+            className="h-full w-[280px] border-l"
+            style={{ borderColor: THEME.panelBorder, background: "#0a101c" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-end p-2" style={{ background: "rgba(10,16,28,0.72)" }}>
+              <button
+                type="button"
+                onClick={() => setPanelOpen(false)}
+                className="rounded p-1.5"
+                style={{ color: THEME.glow }}
+                aria-label="Close conductor profile"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <div className="h-[calc(100%-40px)]">
+              <ConductorPanel />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Deploy ring hint */}
       <div className={`absolute z-30 bottom-16 left-[128px] text-[10px] transition-opacity ${deployed ? "opacity-100" : "opacity-0"}`}

@@ -1,5 +1,6 @@
 import { ArrowLeft, Copy, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { McpSection } from "@/components/mcp-section";
 import { Button } from "@/components/ui/button";
 import {
   blankHarness,
@@ -86,6 +87,8 @@ export function HarnessPanel() {
             </Button>
           </div>
         </header>
+
+        <McpSection />
 
         <section>
           <p className="mb-3 text-micro uppercase tracking-wider text-subtle">On the stand</p>
