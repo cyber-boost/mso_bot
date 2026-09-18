@@ -1,4 +1,4 @@
-import { BookOpen, Bot, Keyboard, Library, MessageSquare, Menu, Workflow, X } from "lucide-react";
+import { Activity, BookOpen, Bot, Keyboard, Library, MessageSquare, Menu, Workflow, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CatalogPanel } from "@/components/catalog-panel";
 import { CliPanel } from "@/components/cli-panel";
@@ -8,15 +8,18 @@ import { MaestroMark } from "@/components/mark";
 import { ModelRail } from "@/components/model-rail";
 import { PlayArena } from "@/components/play-arena";
 import { PlayPanel } from "@/components/play-panel";
+import { PulsePanel } from "@/components/pulse-panel";
 import { ShellView } from "@/components/shell-view";
 import { ProviderLogo } from "@/components/provider-logo";
 import { resolveHarness } from "@/lib/harness";
+import { startPulseEngine, stopPulseEngine, usePulses } from "@/lib/pulse-store";
 import { useMaestro, type View } from "@/lib/store";
 import type { CatalogIndex, ModelRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const NAV: { id: View; label: string; icon: typeof MessageSquare }[] = [
   { id: "chat", label: "Chat", icon: MessageSquare },
+  { id: "pulse", label: "Pulse", icon: Activity },
   { id: "shell", label: "Shell", icon: Bot },
   { id: "harness", label: "Harness", icon: Workflow },
   { id: "catalog", label: "Catalog", icon: Library },
@@ -39,9 +42,12 @@ export function Console({ index }: { index: CatalogIndex }) {
   } = useMaestro();
   const [railOpen, setRailOpen] = useState(false);
   const harness = resolveHarness(harnessId, customHarnesses);
+  const liveBeats = usePulses((s) => s.active.length);
 
   useEffect(() => {
     hydrate();
+    startPulseEngine();
+    return () => stopPulseEngine();
   }, [hydrate]);
 
   const provider = useMemo(
@@ -90,11 +96,17 @@ export function Console({ index }: { index: CatalogIndex }) {
               type="button"
               onClick={() => setView(n.id)}
               className={cn(
-                "h-8 rounded-full px-3 text-xs transition-colors duration-150",
+                "relative h-8 rounded-full px-3 text-xs transition-colors duration-150",
                 view === n.id ? "bg-elevated text-fg" : "text-muted hover:text-fg",
               )}
             >
               {n.label}
+              {n.id === "pulse" && liveBeats > 0 ? (
+                <span
+                  className="pulse-dot pulse-dot-fast absolute -right-0.5 -top-0.5 inline-block size-2 rounded-full bg-ok"
+                  title="A pulse is beating"
+                />
+              ) : null}
             </button>
           ))}
         </nav>
@@ -144,6 +156,7 @@ export function Console({ index }: { index: CatalogIndex }) {
           {view === "chat" ? (
             <PlayPanel index={index} model={model} provider={provider} />
           ) : null}
+          {view === "pulse" ? <PulsePanel index={index} /> : null}
           {view === "harness" ? <HarnessPanel /> : null}
           {view === "catalog" ? <CatalogPanel index={index} /> : null}
           {view === "keys" ? <KeysPanel index={index} /> : null}

@@ -49,3 +49,6 @@ Thumbs.db
 # ---- Deploy artifacts on the server ----
 deploy.log
 deploy-runtime.log
+
+# local npm cache (sandbox installs)
+.npm-cache/

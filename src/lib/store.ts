@@ -3,7 +3,15 @@ import { isHarness, type Harness, type TraceEvent } from "./harness";
 import type { ChatMessage } from "./protocol";
 import type { ModelRow, Selection } from "./types";
 
-export type View = "chat" | "catalog" | "harness" | "keys" | "cli" | "play" | "shell";
+export type View =
+  | "chat"
+  | "pulse"
+  | "catalog"
+  | "harness"
+  | "keys"
+  | "cli"
+  | "play"
+  | "shell";
 
 export type UiMessage = ChatMessage & { id: string; traces?: TraceEvent[] };
 

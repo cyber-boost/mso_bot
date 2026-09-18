@@ -265,3 +265,79 @@
 .shell-btn:hover {
   box-shadow: 0 0 12px rgba(0, 212, 255, 0.35);
 }
+
+/* ------------------------------------------------------------------ *
+ * Pulse — cron-hearted model beats (EKG strip, heartbeat dots, rings)
+ * ------------------------------------------------------------------ */
+@keyframes pulse-heartbeat {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  14% {
+    transform: scale(1.45);
+    opacity: 1;
+  }
+  28% {
+    transform: scale(1);
+  }
+  42% {
+    transform: scale(1.28);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+}
+.pulse-dot {
+  animation: pulse-heartbeat 1.7s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  transform-origin: center;
+}
+.pulse-dot-fast {
+  animation-duration: 0.85s;
+}
+
+@keyframes ekg-sweep {
+  from {
+    stroke-dashoffset: 1040;
+  }
+  to {
+    stroke-dashoffset: -200;
+  }
+}
+.ekg-base {
+  fill: none;
+  stroke: color-mix(in oklab, var(--color-fg) 14%, transparent);
+  stroke-width: 1.5;
+}
+.ekg-sweep {
+  fill: none;
+  stroke: var(--color-ok);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-dasharray: 190 1050;
+  animation: ekg-sweep 3.6s linear infinite;
+  filter: drop-shadow(0 0 5px color-mix(in oklab, var(--color-ok) 70%, transparent));
+}
+
+@keyframes beat-flash {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.beat-flash {
+  animation: beat-flash 900ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot,
+  .ekg-sweep,
+  .beat-flash {
+    animation: none;
+  }
+}
